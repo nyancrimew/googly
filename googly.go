@@ -7,6 +7,9 @@ import (
 	"encoding/xml"
 	"fmt"
 	"os"
+	"time"
+	"strconv"
+	"strings"
 
 	"github.com/akamensky/argparse"
 )
@@ -20,18 +23,21 @@ func main() {
 	lang := parser.String("l", "lang", &argparse.Options{Help: "Search result language", Default: "en",})
 	pages := parser.Int("p", "pages", &argparse.Options{Help: "The amount of pages to scrape", Default: 5})
 	format := parser.Selector("f", "format", []string{"cli", "json", "xml"}, &argparse.Options{Help: "Output format", Default: "cli"})
-	engine := parser.Selector("e", "engine", []string{"google", "ecosia", "startpage", "yahoo"}, &argparse.Options{Help: "Search engine to use", Default: "google"})
+	engine := parser.Selector("e", "engine", []string{"google", "ecosia", "startpage", "yahoo", "ddg", "naver"}, &argparse.Options{Help: "Search engine to use", Default: "google"})
 	verbose := parser.Flag("v", "verbose", &argparse.Options{Help: "Print more request infos"})
+	from := parser.String("", "from", &argparse.Options{Help: "Start date for the search"})
+	to := parser.String("", "to", &argparse.Options{Help: "End date for the search"})
+	time := parser.Selector("t", "time-range", []string{"any", "hour", "day", "week", "month", "year"}, &argparse.Options{Help: "Time range in which to search", Default: "any"})
 	err := parser.Parse(os.Args)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
-	crawl(*engine, *query, *lang, *pages, *format, *verbose)
+	crawl(*engine, *query, *lang, *pages, *format, *verbose, *from, *to, *time)
 }
 
-func crawl(engine string, query string, lang string, pages int, format string, verbose bool) {
+func crawl(engine string, query string, lang string, pages int, format string, verbose bool, from string, to string, timerange string) {
 	var searchEngine engines.SearchEngine
 
 	switch engine {
@@ -43,9 +49,33 @@ func crawl(engine string, query string, lang string, pages int, format string, v
 		searchEngine = engines.Startpage()
 	case "yahoo":
 		searchEngine = engines.Yahoo()
+	case "ddg":
+		searchEngine = engines.DuckDuckGo()
+	case "naver":
+		searchEngine = engines.Naver()
 	}
 
-	results := searchEngine.Crawl(query, lang, pages, verbose, UA)
+	var fromTime *time.Time
+	var toTime *time.Time
+
+	if from != "" {
+		tmp := parseDate(from)
+		fromTime = &tmp
+	}
+
+	if to != "" {
+		tmp := parseDate(to)
+		toTime = &tmp
+	}
+
+	results := searchEngine.Crawl(query, &engines.SearchOptions{
+		Lang: lang,
+		Pages: pages,
+		Verbose: verbose,
+		From: fromTime,
+		To: toTime,
+		Timerange: timerange,
+	})
 
 	switch format {
 	case "json":
@@ -66,4 +96,12 @@ func crawl(engine string, query string, lang string, pages int, format string, v
 			fmt.Println()
 		}
 	}
+}
+
+func parseDate(str string) time.Time {
+	parts := strings.Split(str, "-")
+	year, _ := strconv.Atoi(parts[0])
+	month, _ := strconv.Atoi(parts[1])
+	day, _ := strconv.Atoi(parts[2])
+	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
 }
