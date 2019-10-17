@@ -1,7 +1,7 @@
 package main
 
 import (
-	"./engines"
+	"github.com/deletescape/googly/engines"
 
 	"encoding/json"
 	"encoding/xml"
@@ -23,7 +23,7 @@ func main() {
 	lang := parser.String("l", "lang", &argparse.Options{Help: "Search result language", Default: "en",})
 	pages := parser.Int("p", "pages", &argparse.Options{Help: "The amount of pages to scrape", Default: 5})
 	format := parser.Selector("f", "format", []string{"cli", "json", "xml"}, &argparse.Options{Help: "Output format", Default: "cli"})
-	engine := parser.Selector("e", "engine", []string{"google", "ecosia", "startpage", "yahoo", "ddg", "naver"}, &argparse.Options{Help: "Search engine to use", Default: "google"})
+	engine := parser.Selector("e", "engine", []string{"google", "ecosia", "startpage", "yahoo", "ddg", "naver", "combined"}, &argparse.Options{Help: "Search engine to use", Default: "google"})
 	verbose := parser.Flag("v", "verbose", &argparse.Options{Help: "Print more request infos"})
 	from := parser.String("", "from", &argparse.Options{Help: "Start date for the search"})
 	to := parser.String("", "to", &argparse.Options{Help: "End date for the search"})
@@ -68,14 +68,21 @@ func crawl(engine string, query string, lang string, pages int, format string, v
 		toTime = &tmp
 	}
 
-	results := searchEngine.Crawl(query, &engines.SearchOptions{
+	options := &engines.SearchOptions{
 		Lang: lang,
 		Pages: pages,
 		Verbose: verbose,
 		From: fromTime,
 		To: toTime,
 		Timerange: timerange,
-	})
+	}
+
+	var results = []engines.Result{}
+	if engine == "combined" {
+		results = engines.Combined(query, options, engines.Google(), engines.Ecosia(), engines.DuckDuckGo())
+	} else {
+		results = searchEngine.Crawl(query, options)
+	}
 
 	switch format {
 	case "json":

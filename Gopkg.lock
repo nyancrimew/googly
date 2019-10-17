@@ -10,6 +10,14 @@
   version = "v1.5.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:1dfdb9db4498d86614fae3f80a8403ec3904f185b0aa4017f9daef4592b4ac0b"
+  name = "github.com/akamensky/argparse"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "1427fe674291a5bc6e207d6bf968cb189205dc75"
+
+[[projects]]
   digest = "1:24ffaa1636eba8f0cfc7671121d05a9a2040605adb1927a93be88fbc2ea6cfdb"
   name = "github.com/andybalholm/cascadia"
   packages = ["."]
@@ -162,6 +170,9 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  input-imports = ["github.com/gocolly/colly"]
+  input-imports = [
+    "github.com/akamensky/argparse",
+    "github.com/gocolly/colly",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1

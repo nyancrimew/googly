@@ -57,7 +57,9 @@ func (en *SearchEngine) Crawl(query string, options *SearchOptions) []Result {
 
 	searchCollector.OnHTML(en.resultSelector, func(e *colly.HTMLElement) {
 		if options.Verbose {
-			fmt.Println(e)
+			c := e.DOM.Nodes[0]
+			p := e.DOM.Parent().Nodes[0]
+			fmt.Println("Selected:", c.Attr, "Parent:", p.Attr)
 		}
 		results = append(results, en.Result(e))
 	})
@@ -87,6 +89,20 @@ func (en *SearchEngine) Crawl(query string, options *SearchOptions) []Result {
 	_ = searchCollector.Visit(en.SearchUrl(query, options))
 
 	return results
+}
+
+func Combined(query string, options *SearchOptions, engines ... SearchEngine) []Result {
+	ch := make(chan []Result, len(engines))
+	for _, eng := range engines {
+		go func(eng SearchEngine) {
+			ch <- eng.Crawl(query, options)
+		} (eng)
+	} 
+	var results [][]Result
+	for i := 0; i < len(engines); i++ {
+		results = append(results, <-ch)
+	}
+	return unique(merge(results))
 }
 
 func getUrl(base string, path string, lang string, langName string) string {
@@ -192,7 +208,7 @@ func Ecosia() SearchEngine {
 		Pagination: func(page int, options *SearchOptions, e *colly.HTMLElement) string {
 			return Url(e.Attr("href"), options.Lang)
 		},
-		resultSelector:     ".result-body",
+		resultSelector:     ".js-result .result-body",
 		paginationSelector: "a.pagination-next",
 	}
 }
